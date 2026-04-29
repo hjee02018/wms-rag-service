@@ -5,7 +5,6 @@ import com.github.hjyang.rag.wms_rag_service.repository.DocumentRepository;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.ai.document.Document as AiDocument;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,18 +27,19 @@ public class RagService {
     private DocumentRepository documentRepository;
 
     public void indexDocument(Document document) {
-        AiDocument aiDoc = new AiDocument(document.getContent(),
+        org.springframework.ai.document.Document aiDoc = new org.springframework.ai.document.Document(document.getContent(),
             Map.of("title", document.getTitle(), "metadata", document.getMetadata()));
+
         vectorStore.add(List.of(aiDoc));
         documentRepository.save(document);
     }
 
     public String query(String question) {
-        List<AiDocument> similarDocuments = vectorStore.similaritySearch(
+        List<org.springframework.ai.document.Document> similarDocuments = vectorStore.similaritySearch(
             SearchRequest.query(question).withTopK(5));
 
         String context = similarDocuments.stream()
-            .map(AiDocument::getContent)
+            .map(org.springframework.ai.document.Document::getContent)
             .collect(Collectors.joining("\n"));
 
         String promptTemplate = """
