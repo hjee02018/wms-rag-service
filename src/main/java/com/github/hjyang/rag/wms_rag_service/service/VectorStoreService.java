@@ -56,7 +56,8 @@ public class VectorStoreService {
             .map(doc -> RagQueryResponse.RetrievedDocument.builder()
                 .title((String) doc.getMetadata().get("title"))
                 .content(doc.getContent())
-                .metadata(doc.getMetadata())
+                .metadata(doc.getMetadata().entrySet().stream()
+                    .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue().toString())))
                 .build()
             )
             .collect(Collectors.toList());

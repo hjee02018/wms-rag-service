@@ -39,11 +39,9 @@ public class Document {
     private String category;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime updatedAt;
 
     @PrePersist

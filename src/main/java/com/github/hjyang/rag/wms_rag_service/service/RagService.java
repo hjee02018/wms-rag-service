@@ -1,5 +1,7 @@
 package com.github.hjyang.rag.wms_rag_service.service;
 
+import com.github.hjyang.rag.wms_rag_service.dto.RagQueryRequest;
+import com.github.hjyang.rag.wms_rag_service.dto.RagQueryResponse;
 import com.github.hjyang.rag.wms_rag_service.model.Document;
 import com.github.hjyang.rag.wms_rag_service.repository.DocumentRepository;
 import org.springframework.ai.chat.client.ChatClient;
@@ -34,9 +36,9 @@ public class RagService {
         documentRepository.save(document);
     }
 
-    public String query(String question) {
+    public RagQueryResponse query(RagQueryRequest request) {
         List<org.springframework.ai.document.Document> similarDocuments = vectorStore.similaritySearch(
-            SearchRequest.query(question).withTopK(5));
+            SearchRequest.query(request.getQuestion()).withTopK(request.getTopK() != null ? request.getTopK() : 5));
 
         String context = similarDocuments.stream()
             .map(org.springframework.ai.document.Document::getContent)
@@ -55,8 +57,23 @@ public class RagService {
             """;
 
         PromptTemplate template = new PromptTemplate(promptTemplate);
-        Prompt prompt = template.create(Map.of("context", context, "question", question));
+        @SuppressWarnings("null")
+        Prompt prompt = template.create(Map.of("context", context, "question", request.getQuestion()));
 
-        return chatClient.prompt(prompt).call().content();
+        String answer = chatClient.prompt(prompt).call().content();
+
+        List<RagQueryResponse.RetrievedDocument> retrievedDocs = similarDocuments.stream()
+            .map(doc -> RagQueryResponse.RetrievedDocument.builder()
+                .title((String) doc.getMetadata().get("title"))
+                .content(doc.getContent())
+                .metadata(doc.getMetadata().entrySet().stream()
+                    .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue().toString())))
+                .build())
+            .collect(Collectors.toList());
+
+        return RagQueryResponse.builder()
+            .answer(answer)
+            .retrievedDocuments(retrievedDocs)
+            .build();
     }
 }

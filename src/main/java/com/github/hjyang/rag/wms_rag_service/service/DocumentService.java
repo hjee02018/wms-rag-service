@@ -85,7 +85,6 @@ public class DocumentService {
     public void deleteDocument(Long id) {
         log.info("Deleting document: {}", id);
         
-        Document document = getDocument(id);
         documentRepository.deleteById(id);
         vectorStoreService.deleteDocument(String.valueOf(id));
         
