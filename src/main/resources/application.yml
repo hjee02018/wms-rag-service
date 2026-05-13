@@ -1,0 +1,47 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:sqlserver://hmx-logisol-mssql-db-dev.c5ruasqdgoz7.ap-northeast-2.rds.amazonaws.com:1433;databaseName=IMS;encrypt=true;trustServerCertificate=true;loginTimeout=30
+    username: dbadmin
+    password: HyundaiSol2023!
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  mvc:
+    async:
+      request-timeout: 60000
+
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: llama3
+          temperature: 0.3
+
+      embedding:
+        options:
+          model: nomic-embed-text
+
+    vectorstore:
+      chroma:
+        client:
+          base-url: http://localhost:8000
+
+        collection-name: wms-rag
+        initialize-schema: true
