@@ -16,12 +16,11 @@ public class ChromaConfig {
     public ChromaApi chromaApi(ObjectMapper objectMapper) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(30000);
-        factory.setReadTimeout(60000);
+        factory.setReadTimeout(120000);
 
         RestClient.Builder builder = RestClient.builder()
                 .requestFactory(factory);
 
-        // IPv4 loopback 주소로 명시: localhost가 IPv6로 해석될 때 연결 실패 방지
         return new ChromaApi("http://127.0.0.1:8000", builder, objectMapper);
     }
 

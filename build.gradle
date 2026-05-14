@@ -45,5 +45,11 @@ dependencies {
     // Java 21 + ClosedChannelException 해결
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
+    // PDF 읽기
+    implementation 'org.springframework.ai:spring-ai-pdf-document-reader'
+
+    // PPTX / 다양한 문서 형식 (Tika 기반)
+    implementation 'org.springframework.ai:spring-ai-tika-document-reader'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
