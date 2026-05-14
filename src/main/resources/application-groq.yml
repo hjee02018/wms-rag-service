@@ -1,0 +1,12 @@
+spring:
+  ai:
+    openai:
+      api-key: ${GROQ_API_KEY}
+      base-url: https://api.groq.com/openai
+      chat:
+        options:
+          model: llama3-8b-8192
+          temperature: 0.3
+      embedding:
+        options:
+          model: text-embedding-3-small   # Groq은 임베딩 미지원 → OpenAI 임베딩 사용

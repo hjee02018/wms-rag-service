@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>WCS RAG Assistant · Beta</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Pretendard:wght@300;400;500;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#090c12; --bg2:#0d1220; --bg3:#111827;
+    --border:#1a2540; --border2:#1e3050;
+    --text:#c8d8e8; --text2:#5a7a9a; --text3:#2a4060;
+    --accent:#00c896; --accent2:#0055ee; --err:#f87171; --radius:12px;
+  }
+  html, body { height: 100%; }
+  body { background:var(--bg); color:var(--text); font-family:'Pretendard',sans-serif; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+  /* 헤더 */
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 24px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .logo { display:flex; align-items:center; gap:10px; }
+  .logo-icon { width:34px; height:34px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:17px; }
+  .logo-text h1 { font-size:14px; font-weight:600; letter-spacing:.04em; color:#f0f6ff; }
+  .logo-text p  { font-size:10px; color:var(--text3); letter-spacing:.1em; font-family:'DM Mono',monospace; }
+
+  /* 모델 선택 */
+  .model-selector { position:relative; }
+  .model-btn { display:flex; align-items:center; gap:8px; padding:7px 14px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:#7aa0c0; font-size:12px; font-family:'DM Mono',monospace; transition:border-color .2s; }
+  .model-btn:hover { border-color:var(--border2); }
+  .model-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+  .model-dropdown { display:none; position:absolute; top:calc(100% + 6px); right:0; background:var(--bg2); border:1px solid var(--border); border-radius:10px; min-width:240px; z-index:100; box-shadow:0 12px 40px rgba(0,0,0,.6); overflow:hidden; max-height:320px; overflow-y:auto; }
+  .model-dropdown.open { display:block; }
+  .model-dropdown-header { padding:8px 16px; font-size:10px; color:var(--text3); font-family:'DM Mono',monospace; letter-spacing:.1em; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg2); }
+  .model-option { padding:10px 16px; cursor:pointer; transition:background .15s; border-bottom:1px solid var(--border); }
+  .model-option:last-child { border-bottom:none; }
+  .model-option:hover { background:#111827; }
+  .model-option.active .model-name { color:var(--accent); }
+  .model-name { font-size:12px; font-family:'DM Mono',monospace; color:var(--text); font-weight:500; }
+  .model-desc { font-size:10px; color:var(--text3); margin-top:3px; }
+
+  /* 레이아웃 */
+  .layout { display:flex; flex:1; overflow:hidden; }
+
+  /* 사이드바 */
+  .sidebar { width:260px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; padding:16px; gap:12px; }
+  .sidebar-title { font-size:10px; font-family:'DM Mono',monospace; color:var(--text3); letter-spacing:.12em; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .drop-zone { border:1.5px dashed var(--border2); border-radius:var(--radius); padding:20px 12px; text-align:center; cursor:pointer; transition:all .2s; }
+  .drop-zone:hover, .drop-zone.drag { border-color:var(--accent); background:rgba(0,200,150,.04); }
+  .drop-zone .drop-icon { font-size:26px; margin-bottom:8px; }
+  .drop-zone .drop-label { font-size:12px; color:var(--text2); line-height:1.5; }
+  .drop-zone .drop-ext { font-size:10px; color:var(--text3); margin-top:4px; font-family:'DM Mono',monospace; }
+  .drop-zone input { display:none; }
+  .upload-status { font-size:11px; padding:8px 12px; border-radius:8px; line-height:1.5; display:none; }
+  .upload-status.show { display:block; }
+  .upload-status.loading { background:#0a1628; border:1px solid var(--border2); color:var(--text2); }
+  .upload-status.ok   { background:#081a0f; border:1px solid #1a3a28; color:#4ade80; }
+  .upload-status.fail { background:#1a0808; border:1px solid #3a1818; color:var(--err); }
+  .doc-list { flex:1; overflow-y:auto; }
+  .doc-list-title { font-size:10px; color:var(--text3); font-family:'DM Mono',monospace; margin-bottom:6px; }
+  .doc-item { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:6px; font-size:11px; color:var(--text2); background:var(--bg3); margin-bottom:4px; border:1px solid var(--border); }
+  .doc-item .doc-ext { font-size:9px; font-family:'DM Mono',monospace; padding:1px 5px; border-radius:4px; background:#0a1628; color:var(--accent); flex-shrink:0; }
+  .doc-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* 채팅 */
+  .chat-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .messages { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:16px; }
+  .msg { display:flex; flex-direction:column; }
+  .msg.user { align-items:flex-end; }
+  .msg.assistant, .msg.system { align-items:flex-start; }
+  .msg-label { font-size:10px; color:var(--text3); font-family:'DM Mono',monospace; letter-spacing:.08em; margin-bottom:4px; }
+  .msg-bubble { max-width:74%; padding:12px 16px; font-size:13px; line-height:1.75; white-space:pre-wrap; word-break:break-word; }
+  .msg.user      .msg-bubble { background:linear-gradient(135deg,#003a99,#0055ee); border-radius:14px 14px 4px 14px; color:#ddeeff; }
+  .msg.assistant .msg-bubble { background:var(--bg3); border:1px solid var(--border); border-radius:4px 14px 14px 14px; color:var(--text); }
+  .msg.system    .msg-bubble { background:transparent; border:1px solid var(--border); border-radius:var(--radius); color:var(--text2); font-size:12px; }
+  .msg.error     .msg-bubble { background:#1a0808; border:1px solid #3a1818; color:var(--err); }
+
+  /* 타이핑 인디케이터 */
+  .typing { display:none; align-items:center; gap:10px; }
+  .typing.show { display:flex; }
+  .typing-bubble { background:var(--bg3); border:1px solid var(--border); border-radius:4px 14px 14px 14px; padding:12px 16px; display:flex; gap:5px; align-items:center; }
+  .typing-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:blink 1.2s ease-in-out infinite; }
+  .typing-dot:nth-child(2) { animation-delay:.2s; }
+  .typing-dot:nth-child(3) { animation-delay:.4s; }
+  @keyframes blink { 0%,100%{opacity:.2;transform:scale(.8)} 50%{opacity:1;transform:scale(1)} }
+  .typing-label { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; }
+
+  /* 입력창 */
+  .input-area { padding:16px 24px; background:var(--bg2); border-top:1px solid var(--border); flex-shrink:0; }
+  .input-row { display:flex; gap:10px; align-items:flex-end; }
+  textarea { flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:11px 15px; color:var(--text); font-size:13px; font-family:'Pretendard',sans-serif; resize:none; outline:none; line-height:1.6; transition:border-color .2s; min-height:44px; max-height:120px; }
+  textarea:focus { border-color:var(--border2); }
+  textarea::placeholder { color:var(--text3); }
+  .send-btn { width:44px; height:44px; flex-shrink:0; border:none; border-radius:10px; cursor:pointer; font-size:18px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; transition:opacity .2s,transform .1s; display:flex; align-items:center; justify-content:center; }
+  .send-btn:hover:not(:disabled) { opacity:.85; transform:scale(1.04); }
+  .send-btn:disabled { background:var(--bg3); border:1px solid var(--border); cursor:not-allowed; opacity:.5; }
+  .input-hint { margin-top:8px; display:flex; justify-content:space-between; font-size:10px; color:var(--text3); font-family:'DM Mono',monospace; }
+
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⬡</div>
+    <div class="logo-text">
+      <h1>WCS RAG Assistant</h1>
+      <p>WAREHOUSE CHATBOT · BETA</p>
+    </div>
+  </div>
+  <div class="model-selector" id="modelSelector">
+    <button class="model-btn" onclick="toggleModelMenu()">
+      <span class="model-dot"></span>
+      <span id="modelLabel">로딩 중...</span>
+      <span style="font-size:10px;color:var(--text3)">▾</span>
+    </button>
+    <div class="model-dropdown" id="modelDropdown">
+      <div class="model-dropdown-header">INSTALLED MODELS</div>
+      <div id="modelList">
+        <div style="padding:10px 16px;font-size:12px;color:var(--text3)">불러오는 중...</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-title">DOCUMENT UPLOAD</div>
+    <div class="drop-zone" id="dropZone"
+      onclick="document.getElementById('fileInput').click()"
+      ondragover="handleDragOver(event)"
+      ondragleave="handleDragLeave()"
+      ondrop="handleDrop(event)">
+      <div class="drop-icon">📎</div>
+      <div class="drop-label">파일을 드래그하거나<br>클릭해서 업로드</div>
+      <div class="drop-ext">PDF · PPTX · DOCX</div>
+      <input type="file" id="fileInput" accept=".pdf,.pptx,.ppt,.docx" onchange="uploadFile(this.files[0])"/>
+    </div>
+    <div class="upload-status" id="uploadStatus"></div>
+    <div class="doc-list">
+      <div class="doc-list-title">UPLOADED DOCS</div>
+      <div id="docList"></div>
+    </div>
+  </aside>
+
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="msg system">
+        <div class="msg-label">SYSTEM</div>
+        <div class="msg-bubble">안녕하세요. WCS 자동화창고 AI 어시스턴트입니다.
+
+· 재고 현황, 입출고 정보 등 DB 데이터를 실시간으로 조회합니다.
+· 업로드한 PDF/PPTX 문서를 참고하여 답변합니다.
+· 왼쪽에서 문서를 업로드한 뒤 질문해보세요.</div>
+      </div>
+    </div>
+
+    <div class="typing" id="typing" style="padding:0 24px 12px;">
+      <div class="typing-bubble">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+      <span class="typing-label" id="typingLabel">응답 생성 중...</span>
+    </div>
+
+    <div class="input-area">
+      <div class="input-row">
+        <textarea id="input" rows="2"
+          placeholder="질문을 입력하세요  (Enter 전송 · Shift+Enter 줄바꿈)"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>↑</button>
+      </div>
+      <div class="input-hint">
+        <span>Spring Boot :8081 · Chroma :8000 · Ollama :11434</span>
+        <span id="modelHint">모델 로딩 중...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8081/rag';
+  let currentModel = '';
+  let loading = false;
+
+  // ── 모델 목록 동적 로드 ──
+  async function loadModels() {
+    try {
+      const res = await fetch(API + '/models');
+      const text = await res.text();
+      console.log('models raw:', text);
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        throw new Error('JSON 파싱 실패: ' + parseErr.message);
+      }
+
+      const models = data.models || [];
+      const list = document.getElementById('modelList');
+      list.innerHTML = '';
+
+      if (models.length === 0) {
+        list.innerHTML = '<div style="padding:10px 16px;font-size:12px;color:var(--text3)">설치된 모델 없음</div>';
+        return;
+      }
+
+      models.forEach(function(m, i) {
+        var name = m.name || '알 수 없음';
+        var sizeStr = '';
+        if (m.size && m.size > 0) {
+          sizeStr = (m.size / 1024 / 1024 / 1024).toFixed(1) + ' GB';
+        }
+
+        var div = document.createElement('div');
+        div.className = 'model-option' + (i === 0 ? ' active' : '');
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'model-name';
+        nameEl.textContent = name;
+
+        var descEl = document.createElement('div');
+        descEl.className = 'model-desc';
+        descEl.textContent = sizeStr;
+
+        div.appendChild(nameEl);
+        div.appendChild(descEl);
+
+        // 클로저로 name, sizeStr 캡처
+        (function(n, s, el) {
+          el.addEventListener('click', function() {
+            selectModel(n, s, el);
+          });
+        })(name, sizeStr, div);
+
+        list.appendChild(div);
+      });
+
+      // 첫 번째 모델 자동 적용
+      if (models.length > 0) {
+        var first = models[0];
+        var sizeStr = '';
+        if (first.size && first.size > 0) {
+          sizeStr = (first.size / 1024 / 1024 / 1024).toFixed(1) + ' GB';
+        }
+        applyModel(first.name, sizeStr);
+      }
+
+    } catch (e) {
+      console.error('loadModels 오류:', e);
+      document.getElementById('modelList').innerHTML =
+        '<div style="padding:10px 16px;font-size:12px;color:var(--err)">로드 실패: ' + e.message + '</div>';
+      document.getElementById('modelLabel').textContent = '연결 오류';
+    }
+  }
+
+  function selectModel(name, desc, el) {
+    document.querySelectorAll('.model-option').forEach(function(o) {
+      o.classList.remove('active');
+    });
+    el.classList.add('active');
+    document.getElementById('modelDropdown').classList.remove('open');
+    applyModel(name, desc);
+  }
+
+  function applyModel(name, desc) {
+    currentModel = name;
+    document.getElementById('modelLabel').textContent = name;
+    document.getElementById('modelHint').textContent = '현재 모델: ' + name + (desc ? ' · ' + desc : '');
+    document.getElementById('typingLabel').textContent = name + ' 응답 생성 중...';
+
+    fetch(API + '/model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: name })
+    }).catch(function(e) {
+      console.error('모델 변경 실패:', e);
+    });
+  }
+
+  function toggleModelMenu() {
+    document.getElementById('modelDropdown').classList.toggle('open');
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!document.getElementById('modelSelector').contains(e.target)) {
+      document.getElementById('modelDropdown').classList.remove('open');
+    }
+  });
+
+  // ── 채팅 ──
+  function addMessage(role, content, isError) {
+    var container = document.getElementById('messages');
+    var div = document.createElement('div');
+    div.className = 'msg ' + role + (isError ? ' error' : '');
+
+    var label = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = role === 'user' ? 'YOU' : 'ASSISTANT · ' + currentModel;
+
+    var bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = content;
+
+    div.appendChild(label);
+    div.appendChild(bubble);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  async function sendMessage() {
+    var inputEl = document.getElementById('input');
+    var q = inputEl.value.trim();
+    if (!q || loading) return;
+
+    addMessage('user', q, false);
+    inputEl.value = '';
+    autoResize(inputEl);
+    setLoading(true);
+
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 300000);
+
+    try {
+      var res = await fetch(API + '/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q }),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      var data = await res.json();
+      addMessage('assistant', data.answer || data.error || '응답을 받지 못했습니다.', false);
+    } catch (e) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        addMessage('assistant', '응답 시간 초과. 더 가벼운 모델을 선택해보세요.', true);
+      } else {
+        addMessage('assistant', '서버 연결 오류: ' + e.message, true);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function setLoading(val) {
+    loading = val;
+    document.getElementById('typing').classList.toggle('show', val);
+    document.getElementById('sendBtn').disabled = val;
+    if (!val) document.getElementById('messages').scrollTop = 999999;
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    document.getElementById('sendBtn').disabled = !el.value.trim() || loading;
+  }
+
+  // ── 파일 업로드 ──
+  async function uploadFile(file) {
+    if (!file) return;
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (['pdf','pptx','ppt','docx'].indexOf(ext) === -1) {
+      showStatus('fail', '지원하지 않는 형식: .' + ext);
+      return;
+    }
+    showStatus('loading', '업로드 중: ' + file.name);
+    var form = new FormData();
+    form.append('file', file);
+    try {
+      var res = await fetch(API + '/documents/upload', { method: 'POST', body: form });
+      var text = await res.text();
+      if (res.ok) {
+        showStatus('ok', '✓ ' + text);
+        addDocItem(file.name, ext);
+        setTimeout(hideStatus, 4000);
+      } else {
+        showStatus('fail', '✗ ' + text);
+      }
+    } catch (e) {
+      showStatus('fail', '업로드 실패: ' + e.message);
+    }
+  }
+
+  function showStatus(type, msg) {
+    var el = document.getElementById('uploadStatus');
+    el.className = 'upload-status show ' + type;
+    el.textContent = msg;
+  }
+
+  function hideStatus() {
+    document.getElementById('uploadStatus').classList.remove('show');
+  }
+
+  function addDocItem(name, ext) {
+    var item = document.createElement('div');
+    item.className = 'doc-item';
+    var extEl = document.createElement('span');
+    extEl.className = 'doc-ext';
+    extEl.textContent = ext.toUpperCase();
+    var nameEl = document.createElement('span');
+    nameEl.className = 'doc-name';
+    nameEl.title = name;
+    nameEl.textContent = name;
+    item.appendChild(extEl);
+    item.appendChild(nameEl);
+    document.getElementById('docList').appendChild(item);
+  }
+
+  // ── 드래그앤드롭 ──
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.add('drag');
+  }
+
+  function handleDragLeave() {
+    document.getElementById('dropZone').classList.remove('drag');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.remove('drag');
+    var file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  }
+
+  // ── 초기화 ──
+  window.addEventListener('DOMContentLoaded', loadModels);
+</script>
+</body>
+</html>

@@ -26,6 +26,9 @@ dependencyManagement {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // Groq (OpenAI 호환) 추가!!
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+
     // Spring AI 1.1.6 stable
     implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
 
@@ -34,6 +37,9 @@ dependencies {
 
     // MSSQL JDBC Driver
     implementation 'com.microsoft.sqlserver:mssql-jdbc:12.6.3.jre11'
+
+    // Oracle 드라이버 추가
+    implementation 'com.oracle.database.jdbc:ojdbc11:23.4.0.24.05'
 
     // JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

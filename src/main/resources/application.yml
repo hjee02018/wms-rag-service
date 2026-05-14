@@ -13,35 +13,36 @@ spring:
       max-request-size: 100MB
 
   datasource:
-    url: jdbc:sqlserver://hmx-logisol-mssql-db-dev.c5ruasqdgoz7.ap-northeast-2.rds.amazonaws.com:1433;databaseName=IMS;encrypt=true;trustServerCertificate=true;loginTimeout=30
+    url: jdbc:oracle:thin:@//hmx-logisol-oracle-db-dev.c5ruasqdgoz7.ap-northeast-2.rds.amazonaws.com:1521/OHMXDB
     username: dbadmin
     password: HyundaiSol2023!
-    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    driver-class-name: oracle.jdbc.OracleDriver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+      connection-init-sql: ALTER SESSION SET CURRENT_SCHEMA = HMX_KCTC  # ← 스키마 지정 !
+
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        dialect: org.hibernate.dialect.OracleDialect
+    open-in-view: false
 
   mvc:
     async:
-      request-timeout: 60000
+      request-timeout: 300000
 
   ai:
     ollama:
       base-url: http://localhost:11434
       chat:
         options:
-          model: llama3.2:1b
+          model: llama3.2:3b
           temperature: 0.3
       embedding:
         options:
