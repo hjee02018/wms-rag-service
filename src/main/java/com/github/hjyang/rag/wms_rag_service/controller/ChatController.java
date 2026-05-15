@@ -9,11 +9,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
+import org.springframework.core.env.Environment;
 
 @Slf4j
 @RestController
@@ -24,9 +26,27 @@ public class ChatController {
     private final RagService ragService;
     private final DocumentVectorService documentVectorService;
     private final ModelConfig modelConfig;
+    private final Environment environment;
+    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     private OllamaChatModel ollamaChatModel;
+
+// DB 직접 조회 테스트 API  추가
+    @GetMapping("/db-test")
+    public ResponseEntity<String> dbTest() {
+        try {
+            String sql = "SELECT * FROM HMX_KCTC.T_WORK";
+            var rows = jdbcTemplate.queryForList(sql);
+            StringBuilder sb = new StringBuilder();
+            for (var row : rows) {
+                sb.append(row.toString()).append("\n");
+            }
+            return ResponseEntity.ok(sb.toString());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("DB 조회 오류: " + e.getMessage());
+        }
+    }
 
     @PostMapping("/model")
     public ResponseEntity<Map<String, String>> setModel(@RequestBody Map<String, String> req) {
@@ -39,9 +59,38 @@ public class ChatController {
         return ResponseEntity.ok(Map.of("model", model));
     }
 
-    // Ollama 모델 목록 (CORS 우회)
+    // // Ollama 모델 목록 (CORS 우회)
+    // @GetMapping("/models")
+    // public ResponseEntity<String> getModels() {
+    //     try {
+    //         RestTemplate rt = new RestTemplate();
+    //         String result = rt.getForObject("http://localhost:11434/api/tags", String.class);
+    //         return ResponseEntity.ok(result);
+    //     } catch (Exception e) {
+    //         return ResponseEntity.internalServerError()
+    //                 .body("{\"error\":\"" + e.getMessage() + "\"}");
+    //     }
+    // }
     @GetMapping("/models")
     public ResponseEntity<String> getModels() {
+        // 프로파일에 따라 다른 모델 목록 반환
+        String profile = environment.getActiveProfiles().length > 0 
+            ? environment.getActiveProfiles()[0] : "ollama";
+
+        if ("groq".equals(profile)) {
+            // Groq 모델 목록 하드코딩
+            String groqModels = """
+                {"models":[
+                    {"name":"llama-3.1-8b-instant","size":0},
+                    {"name":"llama-3.3-70b-versatile","size":0},
+                    {"name":"llama-3.3-70b-specdec","size":0},
+                    {"name":"llama-3.3-70b-versatile","size":0}
+                ]}
+                """;
+            return ResponseEntity.ok(groqModels);
+        }
+
+        // Ollama 모델 목록
         try {
             RestTemplate rt = new RestTemplate();
             String result = rt.getForObject("http://localhost:11434/api/tags", String.class);

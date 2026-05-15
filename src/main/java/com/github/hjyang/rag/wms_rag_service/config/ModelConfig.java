@@ -8,5 +8,7 @@ import org.springframework.stereotype.Component;
 @Setter
 @Component
 public class ModelConfig {
-    private String currentModel = "qwen3:8b";
+    // private String currentModel = "llama-3.1-8b-instant";       // 나쁘지않지만 프롬프트 가이드가 필요
+    private String currentModel = "llama-3.3-70b-versatile";
+    // private String currentModel = "qwen3:8b";       // ollama 로컬
 }

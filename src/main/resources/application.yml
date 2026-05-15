@@ -7,6 +7,12 @@ server:
       force: true
 
 spring:
+  application:
+    name: wms-rag-service
+
+  profiles:
+    active: groq    # ← 여기서 groq / ollama 전환
+
   servlet:
     multipart:
       max-file-size: 100MB
@@ -21,36 +27,27 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
-      connection-init-sql: ALTER SESSION SET CURRENT_SCHEMA = HMX_KCTC  # ← 스키마 지정 !
-
 
   jpa:
     hibernate:
       ddl-auto: none
     show-sql: false
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.OracleDialect
-    open-in-view: false
 
   mvc:
     async:
       request-timeout: 300000
 
-  ai:
-    ollama:
-      base-url: http://localhost:11434
-      chat:
-        options:
-          model: llama3.2:3b
-          temperature: 0.3
-      embedding:
-        options:
-          model: nomic-embed-text
+  vectorstore:
+    chroma:
+      client:
+        base-url: http://localhost:8000
+      collection-name: wms-rag
+      initialize-schema: true
 
-    vectorstore:
-      chroma:
-        client:
-          base-url: http://localhost:8000
-        collection-name: wms-rag
-        initialize-schema: true
+logging:
+  charset:
+    console: UTF-8

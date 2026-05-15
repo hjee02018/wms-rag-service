@@ -47,6 +47,11 @@ public class RagService {
                             .topK(5)
                             .build()
             );
+
+            log.info("벡터 검색 결과: {}건", docs.size());
+            docs.forEach(doc -> log.info("문서 미리보기: {}",
+                    doc.getText().substring(0, Math.min(200, doc.getText().length()))));
+
             if (docs.isEmpty()) return "";
             return docs.stream()
                     .map(Document::getText)
@@ -56,33 +61,35 @@ public class RagService {
             return "";
         }
     }
-
     private String fetchDbContext(String question, ChatClient chatClient, String schemaContext) {
         try {
+            // LLM이 스키마 보고 직접 SQL 생성
             String sql = generateSql(question, schemaContext, chatClient);
             log.info("생성된 SQL: {}", sql);
+
+            if (sql == null || sql.isBlank() || sql.equalsIgnoreCase("NONE")) {
+                return "";
+            }
+
             return executeQuery(sql);
         } catch (Exception e) {
             log.error("DB 조회 오류: {}", e.getMessage());
             return "";
         }
     }
-
     private String generateSql(String question, String schemaContext, ChatClient chatClient) {
-        String sql = chatClient.prompt()
-                .options(org.springframework.ai.chat.prompt.ChatOptions.builder()
-                    .model(modelConfig.getCurrentModel())
-                    .build())
+        String result = chatClient.prompt()
                 .system("""
                         당신은 Oracle DB 전문가입니다.
-                        아래 [스키마 정보]를 참고하여 Oracle SQL을 생성하세요.
+                        제공된 [스키마 정보]를 참고하여 질문에 맞는 Oracle SQL을 생성하세요.
 
                         규칙:
                         - SELECT 문만 생성
                         - SQL 코드만 출력 (설명, 마크다운 없이)
                         - FETCH FIRST 20 ROWS ONLY 로 결과 제한
                         - 스키마명 없이 테이블명만 사용
-                        - TOP 문법 사용 금지
+                        - TOP 문법 사용 금지 (Oracle 미지원)
+                        - DB 조회가 필요 없는 질문이면 정확히 'NONE' 만 출력
                         """)
                 .user("""
                         [스키마 정보]
@@ -91,16 +98,15 @@ public class RagService {
                         [질문]
                         %s
 
-                        SQL:
+                        SQL (또는 NONE):
                         """.formatted(schemaContext, question))
                 .call()
                 .content();
 
-        return sql.replaceAll("```sql", "")
-                  .replaceAll("```", "")
-                  .trim();
+        return result.replaceAll("```sql", "")
+                    .replaceAll("```", "")
+                    .trim();
     }
-
     private String executeQuery(String sql) {
         try {
             if (!sql.trim().toUpperCase().startsWith("SELECT")) {

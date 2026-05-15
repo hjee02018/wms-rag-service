@@ -5,8 +5,12 @@ spring:
       base-url: https://api.groq.com/openai
       chat:
         options:
-          model: llama3-8b-8192
+          model: llama-3.3-70b-versatile
           temperature: 0.3
+
+    # 임베딩은 로컬 Ollama 유지
+    ollama:
+      base-url: http://localhost:11434
       embedding:
         options:
-          model: text-embedding-3-small   # Groq은 임베딩 미지원 → OpenAI 임베딩 사용
+          model: nomic-embed-text

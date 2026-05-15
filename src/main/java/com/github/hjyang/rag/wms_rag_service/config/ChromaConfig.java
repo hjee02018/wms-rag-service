@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chroma.vectorstore.ChromaApi;
 import org.springframework.ai.chroma.vectorstore.ChromaVectorStore;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -25,7 +26,8 @@ public class ChromaConfig {
     }
 
     @Bean
-    public ChromaVectorStore vectorStore(ChromaApi chromaApi, EmbeddingModel embeddingModel) {
+    public ChromaVectorStore vectorStore(ChromaApi chromaApi,
+                                         OllamaEmbeddingModel embeddingModel) { // ← EmbeddingModel → OllamaEmbeddingModel 명시
         return ChromaVectorStore.builder(chromaApi, embeddingModel)
                 .collectionName("wms-rag")
                 .initializeSchema(true)
