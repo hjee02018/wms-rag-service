@@ -1,0 +1,16 @@
+spring:
+  ai:
+    openai:
+      api-key: "dummy"
+    google:
+      genai:
+        api-key: AIzaSyCZuwNI2lrbf60xVk07YqibIP6z8ThS2gc   # 환경변수 대신 직접
+        chat:
+          options:
+            model: gemini-2.0-flash
+            temperature: 0.3
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        options:
+          model: nomic-embed-text

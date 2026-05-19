@@ -186,7 +186,8 @@
   const API = 'http://localhost:8081/rag';
   let currentModel = '';
   let loading = false;
-
+  let dbConfirmed = false;  // DB 확인 여부
+  let currentDbInfo = '';   // 연결된 DB 정보
   // ── 모델 목록 동적 로드 ──
   async function loadModels() {
     try {
@@ -312,7 +313,46 @@
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
   }
+  async function sendConfirmedMessage(question) {
+      setLoading(true);
+      var controller = new AbortController();
+      var timeout = setTimeout(function() { controller.abort(); }, 300000);
+      try {
+          var res = await fetch(API + '/ask', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ question: question, db_confirmed: true }),
+              signal: controller.signal
+          });
+          clearTimeout(timeout);
+          var data = await res.json();
+          addMessage('assistant', data.answer || '응답을 받지 못했습니다.', false);
+      } catch (e) {
+          clearTimeout(timeout);
+          addMessage('assistant', '오류: ' + e.message, true);
+      } finally {
+          setLoading(false);
+      }
+  }
+  function setLoading(val) {
+    loading = val;
+    document.getElementById('typing').classList.toggle('show', val);
+    document.getElementById('sendBtn').disabled = val;
+    if (!val) document.getElementById('messages').scrollTop = 999999;
+  }
+  function showDbBadge(dbInfo) {
+      // 이미 있으면 업데이트만
+      var existing = document.getElementById('dbBadge');
+      if (existing) { existing.textContent = '🗄 ' + dbInfo; return; }
 
+      var badge = document.createElement('div');
+      badge.id = 'dbBadge';
+      badge.textContent = '🗄 ' + dbInfo;
+      badge.style.cssText = 'font-size:10px;color:#02C39A;font-family:"DM Mono",monospace;padding:4px 10px;background:#051a14;border:1px solid #028090;border-radius:6px;';
+
+      // 헤더 우측에 추가
+      document.querySelector('header').appendChild(badge);
+  }
   async function sendMessage() {
     var inputEl = document.getElementById('input');
     var q = inputEl.value.trim();
@@ -330,12 +370,43 @@
       var res = await fetch(API + '/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q }),
+        // body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ question: q, db_confirmed: dbConfirmed }),
         signal: controller.signal
       });
       clearTimeout(timeout);
       var data = await res.json();
-      addMessage('assistant', data.answer || data.error || '응답을 받지 못했습니다.', false);
+
+      if (data.confirm_required === 'true') {
+        currentDbInfo = data.db_info;
+        showDbBadge(data.db_info);
+
+        var container = document.getElementById('messages');
+        var btnDiv = document.createElement('div');
+        btnDiv.style.cssText = 'display:flex;gap:8px;padding:4px 0 8px 0;';
+
+        var confirmBtn = document.createElement('button');
+        confirmBtn.textContent = '✅ ' + data.db_info + ' 조회 계속';
+        confirmBtn.style.cssText = 'padding:8px 16px;background:#028090;border:none;border-radius:8px;color:white;cursor:pointer;font-size:11px;';
+        confirmBtn.onclick = async function() {
+            btnDiv.remove();
+            dbConfirmed = true;
+            await sendConfirmedMessage(data.original_question);
+        };
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.textContent = '❌ 취소';
+        cancelBtn.style.cssText = 'padding:8px 16px;background:#1a2540;border:1px solid #1e3050;border-radius:8px;color:#5a7a9a;cursor:pointer;font-size:12px;';
+        cancelBtn.onclick = function() { btnDiv.remove(); };
+
+        btnDiv.appendChild(confirmBtn);
+        btnDiv.appendChild(cancelBtn);
+        container.appendChild(btnDiv);
+        container.scrollTop = container.scrollHeight;
+    } else {
+        addMessage('assistant', data.answer || data.error || '응답을 받지 못했습니다.', false);
+    }
+
     } catch (e) {
       clearTimeout(timeout);
       if (e.name === 'AbortError') {
@@ -348,11 +419,30 @@
     }
   }
 
-  function setLoading(val) {
-    loading = val;
-    document.getElementById('typing').classList.toggle('show', val);
-    document.getElementById('sendBtn').disabled = val;
-    if (!val) document.getElementById('messages').scrollTop = 999999;
+  async function sendConfirmedMessage(question) {
+    setLoading(true);
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 300000);
+    try {
+      var res = await fetch(API + '/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: question }),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      var data = await res.json();
+      addMessage('assistant', data.answer || '응답을 받지 못했습니다.', false);
+    } catch (e) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        addMessage('assistant', '응답 시간 초과.', true);
+      } else {
+        addMessage('assistant', '오류: ' + e.message, true);
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleKey(e) {
@@ -393,7 +483,23 @@
       showStatus('fail', '업로드 실패: ' + e.message);
     }
   }
-
+  async function loadDocuments() {
+      try {
+          var res = await fetch(API + '/documents');
+          var docs = await res.json();
+          var list = document.getElementById('docList');
+          list.innerHTML = '';
+          if (docs.length === 0) {
+              list.innerHTML = '<div style="font-size:10px;color:var(--text3);padding:4px 0;">등록된 문서 없음</div>';
+              return;
+          }
+          docs.forEach(function(doc) {
+              addDocItem(doc.filename, doc.type);
+          });
+      } catch (e) {
+          console.error('문서 목록 로드 실패:', e);
+      }
+  }
   function showStatus(type, msg) {
     var el = document.getElementById('uploadStatus');
     el.className = 'upload-status show ' + type;
@@ -437,7 +543,11 @@
   }
 
   // ── 초기화 ──
-  window.addEventListener('DOMContentLoaded', loadModels);
+  window.addEventListener('DOMContentLoaded', function() {
+      loadModels();
+      loadDocuments();  // ← 추가
+  });
+  // window.addEventListener('DOMContentLoaded', loadModels);
 </script>
 </body>
 </html>

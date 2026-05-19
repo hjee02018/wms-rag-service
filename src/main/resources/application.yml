@@ -11,7 +11,7 @@ spring:
     name: wms-rag-service
 
   profiles:
-    active: groq    # ← 여기서 groq / ollama 전환
+    active: groq    # ← 여기서 groq / ollama / gemini 전환
 
   servlet:
     multipart:

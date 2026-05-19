@@ -25,6 +25,8 @@ dependencyManagement {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    // Google AI 추가!!
+    // implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
 
     // Groq (OpenAI 호환) 추가!!
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'

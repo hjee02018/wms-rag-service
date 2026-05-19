@@ -7,10 +7,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+// import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 
 @Configuration
 public class AiConfig {
 
+    // @Bean
+    // @Profile("gemini")
+    // public ChatClient.Builder chatClientBuilderGemini(GoogleGenAiChatModel chatModel) {
+    //     return ChatClient.builder(chatModel);
+    // }
     // Groq 프로파일 — OpenAI 호환 모델 사용
     @Bean
     @Profile("groq")
