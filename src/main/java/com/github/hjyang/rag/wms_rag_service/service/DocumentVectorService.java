@@ -51,7 +51,7 @@ public class DocumentVectorService {
 
         // Chunking
         TokenTextSplitter splitter = TokenTextSplitter.builder()
-                .withChunkSize(500)
+                .withChunkSize(200)
                 .withMinChunkSizeChars(50)
                 .withMinChunkLengthToEmbed(5)
                 .withKeepSeparator(true)
